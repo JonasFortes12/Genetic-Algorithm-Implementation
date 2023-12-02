@@ -1,16 +1,35 @@
 population_size = 200;
 population = initializePopulation(population_size);
-max_genenerations = 200;
-generation = 1;
+max_genenerations = 300;
+generation = 1; %Count generation
 
-while (generation <= maxGenerations)
+count_same_bestIndividual = 0;
+current_bestIndividual = zeros(1,40);
+
+while (generation <= max_genenerations)
     
+    % Evaluates the current population 
     population_score = getAvaliation(population);
+
+    % Defines the population ranking
     population_rank = definePopulationRanking(population, population_score);
 
+    % Selects the best parents from the population and extracts information
     [parents, bestIndividual, bestScore, bestChance, worstIndividual, worstScore, worstChance] = selectParents(population_rank);
-    
-    % Cross parents
+
+    % Checks stagnation of the best individual 
+    if (bestIndividual == current_bestIndividual)
+        count_same_bestIndividual = count_same_bestIndividual + 1;
+    else
+        count_same_bestIndividual = 0;
+    end
+    if count_same_bestIndividual > 70
+        break;
+    end
+    current_bestIndividual = bestIndividual;
+   
+
+    % Parent crossing
     children = crossover(parents);
     
     % Update population
@@ -19,28 +38,19 @@ while (generation <= maxGenerations)
     % elitism - preserves the best individual
     population(round(rand()*(population_size-1) + 1), :) = bestIndividual; 
 
-    bestIndividualDec = convert_bin2dec(bestIndividual);
-    bestIndividualX = round(bestIndividualDec(1),4);
-    bestIndividualY = round(bestIndividualDec(2),4);
-    worstIndividualDec = convert_bin2dec(worstIndividual);
-    worstIndividualX = round(worstIndividualDec(1),4);
-    worstIndividualY = round(worstIndividualDec(2),4);
+    % Show current population informations
+    showGenerationInfo(generation,bestIndividual,bestScore,worstIndividual,worstScore,bestChance,worstChance,population_score);
 
-    disp("Geração: " + generation);
-    disp("Melhor Individuo: X = " + bestIndividualX + ", Y = " + bestIndividualY);
-    disp("Pior Individuo: X = " + worstIndividualX + ", Y = " + worstIndividualY);
-    disp("Melhor Nota: " + bestScore+ " (" + bestChance*100 + "% na roleta)");
-    disp("Pior Nota: " + worstScore + " (" + worstChance*100 + "% na roleta)");
-    disp("Nota Média: " + mean(population_score));
-    disp(" ")
+    % Advance to the next generation
     generation = generation + 1;
 end
 
+% Show graph results
+plotGraph(current_bestIndividual);
 
 function population = initializePopulation(population_size)
     population = randi([0, 1], population_size, 40, 'logical');
 end
-
 
 function populationRanking = definePopulationRanking(population, populationScore)
 
@@ -51,7 +61,6 @@ function populationRanking = definePopulationRanking(population, populationScore
     populationRanking = population_ranking;
 
 end
-
 
 function avaliation = getAvaliation(population)
     
@@ -66,7 +75,6 @@ function avaliation = getAvaliation(population)
     % Normalize the result of the ackley function to an evaluation value for the individual
     avaliation = (25./(ackey_result+1))*4;
 end
-
 
 function [crossGene1, crossGene2] = crossGenes(gene_A, gene_B)
     % define random cut point (between index 2 and 18)
@@ -86,7 +94,6 @@ function [crossGene1, crossGene2] = crossGenes(gene_A, gene_B)
     end
 
 end
-
 
 function children = crossover(parents)
     num_parents = length(parents);
@@ -135,7 +142,6 @@ function children = crossover(parents)
 
 end
 
-
 function xy_values = convert_bin2dec(element)
     
     % get binaries individuals or binaries population
@@ -151,7 +157,6 @@ function xy_values = convert_bin2dec(element)
     
     xy_values = [x, y];
 end
-
 
 function [parents, bestIndividual, bestScore, bestChance, worstIndividual, worstScore, worstChance] = selectParents(population_ranking)
     
@@ -191,4 +196,54 @@ function [parents, bestIndividual, bestScore, bestChance, worstIndividual, worst
 
 end
 
+function showGenerationInfo(generation, bestIndividual, bestScore, worstIndividual, worstScore, bestChance, worstChance, population_score )
 
+    bestIndividual = convert_bin2dec(bestIndividual);
+    bestIndividual_x = round(bestIndividual(1),4);
+    bestIndividual_y = round(bestIndividual(2),4);
+    
+    worstIndividual = convert_bin2dec(worstIndividual);
+    worstIndividual_x = round(worstIndividual(1),4);
+    worstIndividual_y = round(worstIndividual(2),4);
+    bestChance_percent = bestChance * 100;
+    worstChance_percent = worstChance * 100;
+    fprintf('__________________________________________________________\n');
+    fprintf('Número da Geração: %d\n', generation);
+    fprintf('Melhor Individuo: X = %.4f, Y = %.4f\n', bestIndividual_x, bestIndividual_y);
+    fprintf('Pior Individuo: X = %.4f, Y = %.4f\n', worstIndividual_x, worstIndividual_y);
+    fprintf('Melhor Nota: %.4f (%.2f%% na roleta)\n', bestScore, bestChance_percent);
+    fprintf('Pior Nota: %.4f (%.2f%% na roleta)\n', worstScore, worstChance_percent);
+    fprintf('Nota Média: %.4f\n\n', mean(population_score));
+
+end
+
+function plotGraph(bestIndividual)
+    
+    bestIndividual = convert_bin2dec(bestIndividual);
+    bestIndividual_x = round(bestIndividual(1),4);
+    bestIndividual_y = round(bestIndividual(2),4);
+
+    % Define the Ackley function
+    ackley = @(x, y) -20 * exp(-0.2 * sqrt(0.5*(x.^2 + y.^2))) - exp(0.5*(cos(2*pi*x) + cos(2*pi*y))) + exp(1) + 20;
+    
+    % Generate a grid of points for plotting
+    x_values = linspace(-10, 10, 100);  % Ajuste conforme necessário
+    y_values = linspace(-10, 10, 100);  % Ajuste conforme necessário
+    [X, Y] = meshgrid(x_values, y_values);
+    Z = ackley(X, Y);
+    
+    % Plotar Ackey function - search space
+    figure;
+    surf(X, Y, Z, 'EdgeColor', 'none');
+    xlabel('X');
+    ylabel('Y');
+    zlabel('Ackey(x, y)');
+    title('Ackley Function');
+
+    % Plot best individual mark
+    hold on;
+    plot(bestIndividual_x, bestIndividual_y, 'ro', 'MarkerSize', 10, 'LineWidth', 3);
+    hold off;
+    text(bestIndividual_x, bestIndividual_y, ackley(bestIndividual_x, bestIndividual_y), 'Best Individual', 'FontSize', 12, 'Color', 'k');
+
+end
